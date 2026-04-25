@@ -19,6 +19,34 @@ export interface CollectionMetadata {
     estimatedTotal: number;
 }
 
+export const LIBRARY_SECTIONS = [
+    { 
+        id: 'DESTAQUES', 
+        title: 'Destaques', 
+        description: 'As listas mais desejadas e completas para o seu grande dia.'
+    },
+    { 
+        id: 'INTERNACIONAL', 
+        title: 'Destinos Internacionais', 
+        description: 'Transforme seu sonho de conhecer o mundo em presentes inesquecíveis.'
+    },
+    { 
+        id: 'NACIONAL', 
+        title: 'Destinos Nacionais', 
+        description: 'Explore as belezas do Brasil com a ajuda dos seus convidados.'
+    },
+    { 
+        id: 'TEMATICA', 
+        title: 'Listas Temáticas', 
+        description: 'Opções criativas, solidárias e divertidas para todos os perfis.'
+    },
+    { 
+        id: 'CASA', 
+        title: 'Produtos para o Lar', 
+        description: 'Tudo o que você precisa para equipar e decorar sua nova casa.'
+    }
+];
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function col(items: GiftTemplate[]): { itemCount: number; estimatedTotal: number } {
     return {

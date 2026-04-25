@@ -121,6 +121,12 @@ function AdminDashboardContent() {
             👥 Usuários
           </button>
           <button
+            onClick={() => router.push('/admin/presentes/biblioteca')}
+            className="px-6 py-3 bg-white border border-border-soft rounded-2xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand hover:border-brand/20 transition-all shadow-sm flex items-center gap-2"
+          >
+            📚 Biblioteca
+          </button>
+          <button
             onClick={() => router.push('/admin/withdrawals')}
             className="px-6 py-3 bg-white border border-border-soft rounded-2xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:text-brand hover:border-brand/20 transition-all shadow-sm flex items-center gap-2"
           >

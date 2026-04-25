@@ -19,9 +19,10 @@ import {
     ShoppingBag,
     Trash2
 } from 'lucide-react';
-import { COLLECTIONS, GIFT_TEMPLATES, CollectionMetadata, GiftTemplate } from '@/lib/gift-templates';
+import { COLLECTIONS, GIFT_TEMPLATES, LIBRARY_SECTIONS, CollectionMetadata, GiftTemplate } from '@/lib/gift-templates';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 
 // --- Components ---
 
@@ -49,6 +50,8 @@ function BibliotecaContent() {
     const [importing, setImporting] = useState(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
     const [expandedSections, setExpandedSections] = useState<string[]>([]);
+    const [config, setConfig] = useState<Record<string, boolean>>({});
+    const [loadingConfig, setLoadingConfig] = useState(true);
 
     const handleToggleExpand = (sectionId: string) => {
         setExpandedSections(prev => 
@@ -56,38 +59,42 @@ function BibliotecaContent() {
         );
     };
 
-    const sections = [
-        { 
-            id: 'DESTAQUES', 
-            title: 'Destaques', 
-            description: 'As listas mais desejadas e completas para o seu grande dia.',
-            icon: <Star className="text-brand" size={18} />
-        },
-        { 
-            id: 'INTERNACIONAL', 
-            title: 'Destinos Internacionais', 
-            description: 'Transforme seu sonho de conhecer o mundo em presentes inesquecíveis.',
-            icon: <Globe className="text-brand" size={18} />
-        },
-        { 
-            id: 'NACIONAL', 
-            title: 'Destinos Nacionais', 
-            description: 'Explore as belezas do Brasil com a ajuda dos seus convidados.',
-            icon: <Mountain className="text-brand" size={18} />
-        },
-        { 
-            id: 'TEMATICA', 
-            title: 'Listas Temáticas', 
-            description: 'Opções criativas, solidárias e divertidas para todos os perfis.',
-            icon: <Sparkles className="text-brand" size={18} />
-        },
-        { 
-            id: 'CASA', 
-            title: 'Produtos para o Lar', 
-            description: 'Tudo o que você precisa para equipar e decorar sua nova casa.',
-            icon: <Home className="text-brand" size={18} />
+    // Buscar configurações do banco
+    useEffect(() => {
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/api/admin/gift-library/config');
+                const data = await res.json();
+                const configMap: Record<string, boolean> = {};
+                data.forEach((item: any) => {
+                    configMap[item.id] = item.is_enabled;
+                });
+                setConfig(configMap);
+            } catch (e) {
+                console.error('Erro ao carregar config da biblioteca');
+            } finally {
+                setLoadingConfig(false);
+            }
         }
-    ];
+        fetchConfig();
+    }, []);
+
+    const sections = useMemo(() => {
+        return LIBRARY_SECTIONS.map(s => {
+            // Se não estiver no banco, assume habilitado por padrão
+            const isEnabled = config[`section:${s.id}`] !== false;
+            if (!isEnabled) return null;
+
+            return {
+                ...s,
+                icon: s.id === 'DESTAQUES' ? <Star className="text-brand" size={18} /> :
+                      s.id === 'INTERNACIONAL' ? <Globe className="text-brand" size={18} /> :
+                      s.id === 'NACIONAL' ? <Mountain className="text-brand" size={18} /> :
+                      s.id === 'TEMATICA' ? <Sparkles className="text-brand" size={18} /> :
+                      <Home className="text-brand" size={18} />
+            };
+        }).filter(Boolean) as any[];
+    }, [config]);
 
     // Filter items based on collection subcategory
     const collectionItems = useMemo(() => {
@@ -204,7 +211,11 @@ function BibliotecaContent() {
                             className="space-y-20 pb-20"
                         >
                             {sections.map(section => {
-                                const sectionCollections = COLLECTIONS.filter(c => c.category === section.id);
+                                // Filtrar apenas coleções habilitadas
+                                const sectionCollections = COLLECTIONS.filter(c => 
+                                    c.category === section.id && 
+                                    config[`collection:${c.id}`] !== false
+                                );
                                 if (sectionCollections.length === 0) return null;
                                 
                                 const isExpanded = expandedSections.includes(section.id);
