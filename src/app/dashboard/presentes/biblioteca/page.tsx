@@ -80,6 +80,7 @@ function BibliotecaContent() {
     }, []);
 
     const sections = useMemo(() => {
+        if (loadingConfig) return [];
         return LIBRARY_SECTIONS.map(s => {
             // Se não estiver no banco, assume habilitado por padrão
             const isEnabled = config[`section:${s.id}`] !== false;
@@ -94,7 +95,7 @@ function BibliotecaContent() {
                       <Home className="text-brand" size={18} />
             };
         }).filter(Boolean) as any[];
-    }, [config]);
+    }, [config, loadingConfig]);
 
     // Filter items based on collection subcategory
     const collectionItems = useMemo(() => {
@@ -200,16 +201,22 @@ function BibliotecaContent() {
             </header>
 
             <main className="max-w-6xl mx-auto px-6 pt-12">
-                <AnimatePresence mode="wait">
-                    {!selectedCollection ? (
-                        /* SECTIONED GALLERY VIEW */
-                        <motion.div 
-                            key="gallery"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -20 }}
-                            className="space-y-20 pb-20"
-                        >
+                {loadingConfig ? (
+                    <div className="py-32 flex flex-col items-center justify-center gap-3 animate-in fade-in duration-300">
+                        <div className="w-10 h-10 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Carregando modelos...</p>
+                    </div>
+                ) : (
+                    <AnimatePresence mode="wait">
+                        {!selectedCollection ? (
+                            /* SECTIONED GALLERY VIEW */
+                            <motion.div 
+                                key="gallery"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="space-y-20 pb-20"
+                            >
                             {sections.map(section => {
                                 // Filtrar apenas coleções habilitadas
                                 const sectionCollections = COLLECTIONS.filter(c => 
@@ -400,6 +407,7 @@ function BibliotecaContent() {
                         </motion.div>
                     )}
                 </AnimatePresence>
+                )}
             </main>
 
             {/* Status Feedback Overlays */}
