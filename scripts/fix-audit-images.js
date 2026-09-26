@@ -1,85 +1,61 @@
 const fs = require('fs');
 
-const path = 'c:\\Users\\rodri\\Desktop\\App RSVP site\\Google Gravity\\tmp_app\\src\\lib\\gift-templates.ts';
-let content = fs.readFileSync(path, 'utf8');
+const auditData = JSON.parse(fs.readFileSync('broken_images_audit.json', 'utf8'));
+const brokenUrls = new Set(auditData.broken.map(b => b.url));
+let content = fs.readFileSync('src/lib/gift-templates.ts', 'utf8');
 
-const repls = {
-    'Passeio ao Lago Negro': 'photo-1542128859-9941a3160100',
-    'Museu do Chocolate Artesanal': 'photo-1481391243133-f96216dcb5d2',
-    'Workshop de Fondue': 'photo-1550547660-d9450f859349',
-    'Visita ao Olivas de Gramado': 'photo-1502672260266-1c1ef2d93688',
-    'Sessão de Fotos no Belvédère': 'photo-1519741497674-611481863552',
-    'Chá da Tarde em Estilo Inglês': 'photo-1542314831-068cd1dbfeeb',
-    'Dia de Compras no Centro': 'photo-1441986300917-64674bd600d8',
-    'Entrada para o Mini Mundo': 'photo-1563298723-dcfebaa3a2ec',
-    'Almoço Típico Alemão': 'photo-1481070555726-e2fe8357725c',
-    'Jantar em Restaurante Temático': 'photo-1514362545857-3bc16c4c7d1b',
-    'Ticket para o Museu de Cera Dreamland': 'photo-1594909122845-11baa439b7bf',
-    'Honeymoon Fund: "Amor na Serra"': 'photo-1501785888041-af3ef285b470',
-    'Update: Seguro Viagem Serra Gaúcha': 'photo-1544731612-de7f96afe55f',
-    'Mimo: Jogo de Cristais de Gramado': 'photo-1581783898377-1c85bf937427',
-    'Pôr do Sol no Mirante do Boldró': 'photo-1508739773434-c26b3d09e071',
-    'Aluguel de Buggy por 1 Dia': 'photo-1506905925346-21bda4d32df4',
-    'Observação de Golfinhos': 'photo-1572949645841-01634f59a643',
-    'Trilha Noturna Guiada': 'photo-1419242902214-272b3f66ee7a',
-    'Passeio de Caiaque': 'photo-1482784160316-6eb046863ece',
-    'Jantar com Vista para o Mar': 'photo-1514362545857-3bc16c4c7d1b',
-    'Passeio de Barco ao Entardecer': 'photo-1505118380757-91f5f5632de0',
-    'Entrada para o Parque Nacional Marinho': 'photo-1594909122845-11baa439b7bf',
-    'Update: Seguro Viagem Noronha': 'photo-1544731612-de7f96afe55f',
-    'Mimo: Lembrança de Artesanato Local': 'photo-1441986300917-64674bd600d8',
-    'Degustação de Frutos do Mar': 'photo-1514362545857-3bc16c4c7d1b',
-    'Passeio de Bike Elétrica na Orla': 'photo-1485965120184-e220f721d03e',
-    'Tour de Fotos "Amanhecer em Noronha"': 'photo-1519741497674-611481863552',
-    'Mimo: Toalha de Banho Premium Bordada': 'photo-1584622781564-1d9876a3e7db',
-    'Jantar Romântico sob as Estrelas': 'photo-1514362545857-3bc16c4c7d1b',
-    'Passeio de Mão Dada ao Pôr do Sol': 'photo-1501785888041-af3ef285b470',
-    'Aventura Radical: Voo de Asa Delta ou Balão': 'photo-1533228892549-51cf2c5da992',
-    'Transporte Executivo VIP (Aeroporto-Hotel)': 'photo-1503376780353-7e6692767b70',
-    'Fotos Profissionais do Casal no Destino': 'photo-1519741497674-611481863552',
-    'Seleção de Compras em Boutique Local': 'photo-1441986300917-64674bd600d8',
-    'Seguro Viagem Master para o Casal': 'photo-1544731612-de7f96afe55f',
-    'Frigobar Liberado por toda a Viagem': 'photo-1543332171-3321a5ebad3c',
-    'Pacote de Internet Ilimitada (Roaming)': 'photo-1520333789090-1afc82db536a',
-    'Cesta de Frutas e Chocolates Belgas': 'photo-1493770348161-369560ae357d',
-    'Café da Manhã Flutuante na Piscina': 'photo-1533089860892-a7c6f0a88666',
-    'Champagne Gelado na Chegada ao Quarto': 'photo-1543834313-0f7fc3f9cb90',
-    'Aluguel de Bicicletas Retrô por um dia': 'photo-1485965120184-e220f721d03e',
-    'Happy Hour em Rooftop Badalado': 'photo-1514362545857-3bc16c4c7d1b',
-    'Entrada para Museu ou Galeria de Arte': 'photo-1518998053574-53f1f61f9b86',
-    'Ajuda com o Excesso de Bagagem (Compras!)': 'photo-1551107696-a4b0c5a0d9a2',
-    'Sobremesa Especial com Assinatura do Chef': 'photo-1551024506-0bcad19a4ad3',
-    'Check-in Prioritário e Sala VIP': 'photo-1544731612-de7f96afe55f',
-    'Piquenique Gourmet no Parque Local': 'photo-1515238152791-8216bfdf89a7',
-    'Cota para Refrigerador Multidoor Smart': 'photo-1626803775151-61d756612f97',
-    'Robô Aspirador de Última Geração': 'photo-1518133835878-5a93cc3f89e5',
-    'Máquina de Café Espresso Profissional': 'photo-1495474472287-4d71bcdd2085',
-    'Adega Climatizada para Seleção de Rótulos': 'photo-1584622650111-993a426fbf0a',
-    'Soundbar de Cinema para o Living': 'photo-1595928642581-f50f4f3453a5',
-    'Jogo de Panelas em Cerâmica Copper (10 pçs)': 'photo-1584284778588-a5b2b4e8ee5f',
-    'Batedeira Planetária de Alta Performance': 'photo-1594833246416-65be797fc7de',
-    'Enxoval Real de Cama (1.000 Fios)': 'photo-1505691938895-1758d7eaa511',
-    'Tapete Artesanal sob Medida para Sala': 'photo-1562184552-997c461abbe6',
-    'Fritadeira Elétrica Airfryer Digital XL': 'photo-1581439645268-ea7bbe6bd091'
-};
+console.log(`Corrigindo ${brokenUrls.size} URLs quebradas em src/lib/gift-templates.ts...`);
 
-let counter = 0;
-// We split the file by lines to do safe replacements
-let lines = content.split('\n');
+// Mapeamento de substituição direta para as URLs quebradas mais comuns (Unsplash permanente de alta qualidade)
+const UNSPLASH_COLLECTION = [
+  'https://images.unsplash.com/photo-1541544741938-0af808871cc0?w=800&q=80',
+  'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80',
+  'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=80',
+  'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
+  'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&q=80',
+  'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?w=800&q=80',
+  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80',
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+  'https://images.unsplash.com/photo-1512389142860-9c449e58a543?w=800&q=80',
+  'https://images.unsplash.com/photo-1535958636474-b021ee887b13?w=800&q=80',
+  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
+  'https://images.unsplash.com/photo-1418985991508-e47386d96a71?w=800&q=80',
+  'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80',
+  'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800&q=80',
+  'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
+  'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&q=80',
+  'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&q=80',
+  'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=800&q=80',
+  'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80',
+  'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=800&q=80',
+  'https://images.unsplash.com/photo-1602874801007-bd458bb1b8b6?w=800&q=80',
+  'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80',
+  'https://images.unsplash.com/photo-1528183429752-a97d0bf99b5a?w=800&q=80',
+  'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&q=80',
+  'https://images.unsplash.com/photo-1508614589041-895b88991e3e?w=800&q=80',
+  'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=80',
+  'https://images.unsplash.com/photo-1544731612-de7f96afe55f?w=800&q=80',
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80',
+  'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80',
+  'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=800&q=80',
+  'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&q=80',
+  'https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=800&q=80',
+  'https://images.unsplash.com/photo-1594489428504-5c0c480a15fd?w=800&q=80',
+  'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80',
+  'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80'
+];
 
-for (let i = 0; i < lines.length; i++) {
-    for (const [name, imgId] of Object.entries(repls)) {
-        if (lines[i].includes(`name: '${name}'`) || lines[i].includes(`name: "${name}"`)) {
-            const oldLine = lines[i];
-            const newLine = oldLine.replace(/imageUrl:\s*['"][^'"]+['"]/, `imageUrl: 'https://images.unsplash.com/${imgId}?auto=format&fit=crop&q=80&w=800'`);
-            
-            if (oldLine !== newLine) {
-                lines[i] = newLine;
-                counter++;
-            }
-        }
-    }
-}
+let index = 0;
+let replacedCount = 0;
 
-fs.writeFileSync(path, lines.join('\n'));
-console.log(`Successfully replaced ${counter} images.`);
+brokenUrls.forEach(url => {
+  if (content.includes(url)) {
+    const replacement = UNSPLASH_COLLECTION[index % UNSPLASH_COLLECTION.length];
+    index++;
+    content = content.replaceAll(url, replacement);
+    replacedCount++;
+  }
+});
+
+fs.writeFileSync('src/lib/gift-templates.ts', content);
+console.log(`✨ Sucesso! ${replacedCount} URLs quebradas foram substituídas por imagens Unsplash permanentes.`);
