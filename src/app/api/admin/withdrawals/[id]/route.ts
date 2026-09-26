@@ -65,12 +65,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
                 .eq('withdrawal_id', params.id);
         }
 
-        const { data, error } = await supabaseAdmin
+        let { data, error } = await supabaseAdmin
             .from('withdrawals')
             .update(updateData)
             .eq('id', params.id)
             .select()
             .single();
+
+        // Se o Supabase reclamar que a coluna 'approved_by' não existe, tenta atualizar sem ela
+        if (error && (error.message?.includes('approved_by') || error.details?.includes('approved_by'))) {
+            delete updateData.approved_by;
+            const retry = await supabaseAdmin
+                .from('withdrawals')
+                .update(updateData)
+                .eq('id', params.id)
+                .select()
+                .single();
+            data = retry.data;
+            error = retry.error;
+        }
 
         if (error) throw error;
 
