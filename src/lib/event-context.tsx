@@ -441,20 +441,29 @@ export function EventProvider({ children }: { children: ReactNode }) {
         }
 
         try {
-            const { error } = await supabase.from('guests').insert({
-                id: newId,
-                event_id: eventId,
-                name: data.name,
-                email: data.email,
-                telefone: data.telefone,
-                grupo: data.grupo,
-                status: 'pending',
-                category: data.category,
-                companions_list: data.companionsList,
-                updated_at: new Date().toISOString()
+            const res = await fetch('/api/guests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventId,
+                    guest: {
+                        id: newId,
+                        name: data.name,
+                        email: data.email,
+                        telefone: data.telefone,
+                        grupo: data.grupo,
+                        category: data.category,
+                        companionsList: data.companionsList || []
+                    }
+                })
             })
 
-            if (error) throw error
+            const resData = await res.json()
+            if (!res.ok) {
+                console.error('[EventContext] Erro ao cadastrar convidado:', resData)
+                throw new Error(resData.error || 'Erro ao salvar convidado')
+            }
+
             setGuests(prev => [newGuest, ...prev])
             return true
         } catch (error) {
@@ -480,17 +489,13 @@ export function EventProvider({ children }: { children: ReactNode }) {
                 const now = new Date()
                 const guestDataToInsert = {
                     id: newId,
-                    event_id: eventId,
                     name: data.name,
                     email: data.email || '',
                     telefone: data.telefone || '',
                     grupo: data.grupo || '',
-                    status: 'pending',
                     category: data.category,
-                    companions_list: data.companionsList || [],
-                    updated_at: now.toISOString()
+                    companionsList: data.companionsList || []
                 }
-
 
                 toImport.push(guestDataToInsert)
                 newGuests.push({
@@ -505,13 +510,26 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
         if (toImport.length > 0) {
             try {
-                const { error } = await supabase.from('guests').insert(toImport)
-                if (error) throw error
+                const res = await fetch('/api/guests', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        eventId,
+                        guests: toImport
+                    })
+                })
+
+                const resData = await res.json()
+                if (!res.ok) {
+                    console.error('[EventContext] Erro no batch import:', resData)
+                    throw new Error(resData.error || 'Erro ao salvar convidados')
+                }
+
                 setGuests(prev => [...newGuests, ...prev])
                 return { imported: toImport.length, duplicates }
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Erro no batch import:', error)
-                return { imported: 0, duplicates: [], error: 'Erro ao salvar convidados' }
+                return { imported: 0, duplicates: [], error: error.message || 'Erro ao salvar convidados' }
             }
         }
 
@@ -539,23 +557,6 @@ export function EventProvider({ children }: { children: ReactNode }) {
             toast.error('Erro ao excluir', { description: error.message })
         }
     }, [eventId])
-
-    const updateGuestStatus = useCallback(async (id: string, status: GuestStatus) => {
-        try {
-            const now = new Date()
-            const { error } = await supabase.from('guests').update({
-                status,
-                updated_at: now.toISOString(),
-                confirmed_at: status === 'confirmed' ? now.toISOString() : null
-            }).eq('id', id)
-
-            if (error) throw error
-            setGuests(prev => prev.map(g => g.id === id ? { ...g, status, updatedAt: now, confirmedAt: status === 'confirmed' ? now : undefined } : g))
-        } catch (error) {
-            console.error('Erro ao atualizar status:', error)
-            throw error // Re-lança para o chamador tratar
-        }
-    }, [])
 
     const updateGuest = useCallback(async (id: string, guestData: Partial<Guest>) => {
         if (!eventId) {
@@ -616,6 +617,15 @@ export function EventProvider({ children }: { children: ReactNode }) {
             throw error // Re-lança para o modal tratar e mostrar o toast
         }
     }, [eventId])
+
+    const updateGuestStatus = useCallback(async (id: string, status: GuestStatus) => {
+        try {
+            await updateGuest(id, { status })
+        } catch (error) {
+            console.error('Erro ao atualizar status:', error)
+            throw error // Re-lança para o chamador tratar
+        }
+    }, [updateGuest])
 
     const updateGuestCompanions = useCallback(async (id: string, companions: Companion[]) => {
         await updateGuest(id, { companionsList: companions })
