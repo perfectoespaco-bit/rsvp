@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { verifyEventOwnership } from '@/lib/verify-ownership'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { id, updates } = body
 
-    console.log('[API EVENTS SAVE] Payload:', { id, updates })
-
     if (!id) {
       return NextResponse.json({ error: 'ID do evento é obrigatório' }, { status: 400 })
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY não configurada. A atualização pode falhar devido ao RLS.')
+    // 🔒 Blindagem: Validar se quem está salvando é o dono do evento ou admin
+    const ownership = await verifyEventOwnership(request, id)
+    if (!ownership.authorized) {
+      return ownership.response
     }
 
     // Usando o supabaseAdmin para contornar RLS

@@ -16,41 +16,51 @@ export async function POST(req: NextRequest) {
 
         logEntry(`>>> Rota de RSVP: ${updates.name} (${updates.status})`);
 
+        // 🔒 1. Proteção Bot / Honeypot: se campo oculto vier preenchido, descarta silenciosamente
+        if (body.hp_website || body._gotcha) {
+            return NextResponse.json({ ok: true })
+        }
+
         if (!guestId || !updates) {
-            logEntry(`!!! Dados inválidos`);
             return NextResponse.json({ error: 'Dados insuficientes' }, { status: 400 })
         }
 
-        // Recuperar o ownerEmail
-        let ownerEmail = body.ownerEmail;
-        if (!ownerEmail) {
-            logEntry(`... buscando ownerEmail...`);
-            const { data: guestData } = await supabaseAdmin.from('guests').select('event_id').eq('id', guestId).single();
-            if (guestData?.event_id) {
-                const { data: eventData } = await supabaseAdmin.from('events').select('created_by').eq('id', guestData.event_id).single();
-                if (eventData?.created_by) ownerEmail = eventData.created_by;
-            }
-        }
-        logEntry(`... ownerEmail: ${ownerEmail}`);
+        // 🔒 2. Sanitização de entradas contra XSS e injeção de HTML
+        const sanitize = (val: any) => typeof val === 'string' ? val.replace(/<[^>]*>/g, '').trim() : ''
+        const cleanName = sanitize(updates.name).slice(0, 150)
+        const cleanEmail = sanitize(updates.email).slice(0, 150)
+        const cleanMessage = sanitize(updates.message).slice(0, 1000)
+        const validStatus = ['confirmed', 'declined', 'pending'].includes(updates.status) ? updates.status : 'pending'
 
-        // 1. Atualizar no Banco de Dados
+        // 🔒 3. Recuperar ownerEmail estritamente do banco de dados (nunca confiar no body do cliente)
+        let ownerEmail: string | null = null;
+        const { data: guestData } = await supabaseAdmin.from('guests').select('event_id').eq('id', guestId).single();
+        if (!guestData?.event_id) {
+            return NextResponse.json({ error: 'Convidado não encontrado' }, { status: 404 });
+        }
+        const { data: eventData } = await supabaseAdmin.from('events').select('created_by').eq('id', guestData.event_id).single();
+        if (eventData?.created_by) {
+            ownerEmail = eventData.created_by;
+        }
+
+        // 4. Atualizar no Banco de Dados com dados sanitizados
         const now = new Date()
         const dbUpdates: any = { 
             updated_at: now.toISOString(),
-            status: updates.status,
-            email: updates.email,
-            message: updates.message,
-            name: updates.name,
-            companions_list: updates.companionsList
+            status: validStatus,
+            email: cleanEmail || null,
+            message: cleanMessage,
+            name: cleanName,
+            companions_list: Array.isArray(updates.companionsList) ? updates.companionsList.slice(0, 15) : []
         }
 
-        if (updates.status === 'confirmed') {
+        if (validStatus === 'confirmed') {
             dbUpdates.confirmed_at = updates.confirmedAt || now.toISOString()
         } else {
             dbUpdates.confirmed_at = null
         }
 
-        await supabaseAdmin.from('guests').update(dbUpdates).eq('id', guestId)
+        await supabaseAdmin.from('guests').update(dbUpdates).eq('id', guestId).eq('event_id', guestData.event_id)
         logEntry(`... Banco atualizado.`);
 
         // 2. Disparar E-mails

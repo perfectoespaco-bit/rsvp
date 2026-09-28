@@ -1,13 +1,24 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { verifyEventOwnership } from '@/lib/verify-ownership';
 
 export async function DELETE(
-    req: Request,
+    req: NextRequest,
     { params }: { params: { id: string, giftId: string } }
 ) {
     try {
+        const eventId = params.id;
         const giftId = params.giftId;
-        const { error } = await supabaseAdmin.from('gifts').delete().eq('id', giftId);
+
+        // 🔒 Blindagem: Validar propriedade do evento
+        const ownership = await verifyEventOwnership(req, eventId);
+        if (!ownership.authorized) return ownership.response;
+
+        const { error } = await supabaseAdmin
+            .from('gifts')
+            .delete()
+            .eq('id', giftId)
+            .eq('event_id', eventId);
 
         if (error) throw error;
 
@@ -18,27 +29,40 @@ export async function DELETE(
 }
 
 export async function PATCH(
-    req: Request,
+    req: NextRequest,
     { params }: { params: { id: string, giftId: string } }
 ) {
     try {
+        const eventId = params.id;
         const giftId = params.giftId;
+
+        // 🔒 Blindagem: Validar propriedade do evento
+        const ownership = await verifyEventOwnership(req, eventId);
+        if (!ownership.authorized) return ownership.response;
+
         const body = await req.json();
 
         // Limpar dados para o Supabase
-        const updateData = {
-            name: body.name,
-            description: body.description,
-            price: Number(body.price),
-            active: body.active !== false,
-            image_url: body.imageUrl,
-            category: body.category
-        };
+        const updateData: any = {};
+        if (body.name !== undefined) updateData.name = String(body.name).trim();
+        if (body.description !== undefined) updateData.description = String(body.description).trim();
+        if (body.price !== undefined) updateData.price = Math.max(0, Number(body.price));
+        if (body.quantity !== undefined) {
+            const qty = Math.max(1, parseInt(body.quantity, 10) || 1);
+            updateData.quantity = qty;
+            updateData.is_quota = Boolean(body.isQuota !== undefined ? body.isQuota : qty > 1);
+        } else if (body.isQuota !== undefined) {
+            updateData.is_quota = Boolean(body.isQuota);
+        }
+        if (body.active !== undefined) updateData.active = Boolean(body.active);
+        if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl;
+        if (body.category !== undefined) updateData.category = body.category;
 
         const { error } = await supabaseAdmin
             .from('gifts')
             .update(updateData)
-            .eq('id', giftId);
+            .eq('id', giftId)
+            .eq('event_id', eventId);
 
         if (error) throw error;
 

@@ -314,6 +314,13 @@ export default function PresentsContent({ slug }: Props) {
                                                     R$ {formatPrice(getDisplayPrice(gift.price))}
                                                 </div>
 
+                                                {/* Quota / Quantity Badge */}
+                                                {gift.quantity && Number(gift.quantity) > 1 && (
+                                                    <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-md text-brand border border-brand/20 px-3 py-1 rounded-full shadow-lg text-[9px] font-black uppercase tracking-wider">
+                                                        {gift.quantity} {gift.is_quota ? 'Cotas' : 'Unidades'}
+                                                    </div>
+                                                )}
+
                                                 {/* Image */}
                                                 <div className="aspect-[4/3] relative overflow-hidden bg-bg-light flex-shrink-0">
                                                     {gift.image_url ? (

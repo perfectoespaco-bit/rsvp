@@ -56,13 +56,12 @@ export async function PATCH(
         console.log('[GUEST UPDATE] Final payload:', JSON.stringify(payload))
         console.log('[GUEST UPDATE] Target ID:', guestId)
 
-        // Executar o update
+        // Executar o update estritamente escopado ao evento
         const { data, error } = await supabaseAdmin
             .from('guests')
             .update(payload)
             .eq('id', guestId)
-            // Removemos o filtro de event_id aqui porque o ID do convidado já é único 
-            // e a validação de propriedade já foi feita acima via verifyEventOwnership.
+            .eq('event_id', eventId)
             .select() 
 
         if (error) {

@@ -1,13 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { verifyEventOwnership } from '@/lib/verify-ownership';
 import { GIFT_TEMPLATES } from '@/lib/gift-templates';
 
 export async function POST(
-    req: Request,
+    req: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
         const eventId = params.id;
+
+        // 🔒 Blindagem: Validar propriedade do evento
+        const ownership = await verifyEventOwnership(req, eventId);
+        if (!ownership.authorized) return ownership.response;
+
         const { category, subcategory, items } = await req.json();
 
         // Se vieram itens específicos do preview, usá-los diretamente
@@ -24,20 +30,23 @@ export async function POST(
         }
 
         // Criar presentes em lote para o evento
-        const inserts = templates.map((t: any, index: number) => ({
-            event_id: eventId,
-            name: t.name,
-            description: t.description,
-            price: t.price,
-            category: t.category,
-            subcategory: t.subcategory,
-            image_url: t.imageUrl,
-            is_quota: t.isQuota || false,
-            quantity: t.quantity || 1,
-            active: true,
-            is_custom: false,
-            order: index
-        }));
+        const inserts = templates.map((t: any, index: number) => {
+            const qty = Math.max(1, parseInt(t.quantity, 10) || 1);
+            return {
+                event_id: eventId,
+                name: String(t.name || '').trim(),
+                description: String(t.description || '').trim(),
+                price: Math.max(0, Number(t.price) || 0),
+                category: t.category,
+                subcategory: t.subcategory,
+                image_url: t.imageUrl,
+                is_quota: Boolean(t.isQuota || qty > 1),
+                quantity: qty,
+                active: true,
+                is_custom: false,
+                order: index
+            };
+        });
 
         const { error } = await supabaseAdmin.from('gifts').insert(inserts);
 

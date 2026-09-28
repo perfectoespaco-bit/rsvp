@@ -83,10 +83,10 @@ export async function POST(req: Request) {
     // 1. Criar registro pendente no Banco de Dados (Supabase) - Usando supabaseAdmin para evitar bloqueios de RLS
     const { error: dbError } = await supabaseAdmin.from("gift_transactions").insert({
       id: transactionId,
-      event_id: eventId,
-      guest_name: guestName,
-      guest_email: body.email || null,
-      message: message,
+      event_id: firstGift.event_id,
+      guest_name: String(guestName || 'Convidado').replace(/<[^>]*>/g, '').trim().slice(0, 150),
+      guest_email: body.email ? String(body.email).trim().slice(0, 150) : null,
+      message: String(message || '').replace(/<[^>]*>/g, '').trim().slice(0, 1000),
       amount_bruto: totalAmountBruto,
       amount_gross: totalAmountBruto,
       amount_net: totalAmountNet,

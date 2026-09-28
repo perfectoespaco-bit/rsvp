@@ -68,14 +68,17 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Criar registro de transação PENDENTE no banco
+        const cleanGuestName = String(guestName || 'Convidado').replace(/<[^>]*>/g, '').trim().slice(0, 150);
+        const cleanMessage = String(message || '').replace(/<[^>]*>/g, '').trim().slice(0, 1000);
+
         const { data: tx, error: txError } = await supabaseAdmin
             .from('gift_transactions')
             .insert({
                 gift_id: firstGift.id,
                 event_id: firstGift.event_id,
-                guest_name: guestName,
-                guest_email: email || null,
-                message: `Carrinho: ${itemNames.join(', ')}. ${message || ''}`,
+                guest_name: cleanGuestName,
+                guest_email: email ? String(email).trim().slice(0, 150) : null,
+                message: `Carrinho: ${itemNames.join(', ')}. ${cleanMessage}`,
                 amount_bruto: totalAmoutBruto,
                 amount_gross: totalAmoutBruto,
                 amount_fee: totalAmountFee,

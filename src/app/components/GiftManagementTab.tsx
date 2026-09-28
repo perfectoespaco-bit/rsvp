@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Gift, Heart, Plus, Trash2, Edit2, Wallet, ArrowUpRight, CheckCircle2, AlertCircle, Sparkles, MessageSquare, ShieldCheck, X, Check, Info, Mail, Send, Upload, Camera, Image as ImageIcon } from 'lucide-react';
+import { Gift, Heart, Plus, Trash2, Edit2, Wallet, ArrowUpRight, CheckCircle2, AlertCircle, Sparkles, MessageSquare, ShieldCheck, X, Check, Info, Mail, Send, Upload, Camera, Image as ImageIcon, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { uploadImageToStorage } from '@/lib/storage-upload';
 import Image from 'next/image';
@@ -171,7 +171,7 @@ export default function GiftManagementTab({ eventId }: Props) {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/events/${eventId}/gifts`);
+            const res = await fetch(`/api/events/${eventId}/gifts?_t=${Date.now()}`, { cache: 'no-store' });
             const data = await res.json();
             if (data && !data.error) {
                 setGifts(data.gifts || []);
@@ -344,6 +344,7 @@ export default function GiftManagementTab({ eventId }: Props) {
             name: '',
             description: '',
             price: 100,
+            quantity: 1,
             imageUrl: '',
             category: 'CASA',
             active: true
@@ -357,6 +358,7 @@ export default function GiftManagementTab({ eventId }: Props) {
             name: gift.name,
             description: gift.description || '',
             price: Number(gift.price),
+            quantity: gift.quantity ? Number(gift.quantity) : 1,
             imageUrl: gift.image_url || '',
             category: gift.category || 'CASA',
             active: gift.active !== false
@@ -485,10 +487,14 @@ export default function GiftManagementTab({ eventId }: Props) {
                                     <input required type="text" value={editingGift.name} onChange={e => setEditingGift({ ...editingGift, name: e.target.value })} placeholder="Ex: Jantar em Gramado" className="w-full px-4 py-3 bg-bg-light border border-border-soft rounded-xl text-sm font-bold text-text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all shadow-inner" />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 block">Valor (R$)</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 block">Valor Unitário (R$)</label>
                                     <input required type="number" step="0.01" value={editingGift.price} onChange={e => setEditingGift({ ...editingGift, price: e.target.value })} placeholder="100.00" className="w-full px-4 py-3 bg-bg-light border border-border-soft rounded-xl text-sm font-bold text-text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all shadow-inner" />
                                 </div>
                                 <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 block">Quantidade / Cotas</label>
+                                    <input required type="number" min="1" step="1" value={editingGift.quantity || 1} onChange={e => setEditingGift({ ...editingGift, quantity: Math.max(1, parseInt(e.target.value, 10) || 1) })} placeholder="1" className="w-full px-4 py-3 bg-bg-light border border-border-soft rounded-xl text-sm font-bold text-text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all shadow-inner" />
+                                </div>
+                                <div className="md:col-span-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 block">Categoria</label>
                                     <select value={editingGift.category} onChange={e => setEditingGift({ ...editingGift, category: e.target.value })} className="w-full px-4 py-3 bg-bg-light border border-border-soft rounded-xl text-xs font-bold text-text-primary outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all shadow-inner">
                                         <option value="CASA">Casa e Cozinha</option>
@@ -496,6 +502,14 @@ export default function GiftManagementTab({ eventId }: Props) {
                                         <option value="OUTROS">Outros</option>
                                     </select>
                                 </div>
+                                {editingGift.quantity && Number(editingGift.quantity) > 1 && (
+                                    <div className="md:col-span-2 p-3 bg-brand/5 border border-brand/20 rounded-xl flex items-center justify-between text-xs">
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-brand">Total Consolidado ({editingGift.quantity} cotas):</span>
+                                        <span className="font-black text-brand text-sm">
+                                            R$ {(Number(editingGift.price || 0) * Number(editingGift.quantity)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="md:col-span-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-text-muted mb-2 block">Foto do Presente</label>
                                     
@@ -736,13 +750,42 @@ export default function GiftManagementTab({ eventId }: Props) {
                     <div className="relative z-10">
                         <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-6 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-white animate-pulse shadow-[0_0_8px_white]" /> Saldo Disponível P/ Saque</p>
                         <h3 className="text-4xl font-black drop-shadow-md tracking-tight text-white">R$ {Number(stats.availableNet || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
-                        <button
-                            onClick={handleRequestWithdrawal}
-                            disabled={Number(stats.availableNet) <= 0 || requestingWithdrawal}
-                            className="mt-8 px-6 py-3 w-full bg-white text-brand rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-brand-pale active:scale-95 transition-all outline-none focus:ring-4 focus:ring-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            {requestingWithdrawal ? 'Processando...' : 'Solicitar Resgate via Pix'}
-                        </button>
+                        
+                        {(() => {
+                            const pendingW = withdrawals?.find(w => (w.status || '').toUpperCase() === 'PENDING');
+                            return (
+                                <>
+                                    {pendingW && (
+                                        <div className="mt-4 p-3 bg-white/15 backdrop-blur-md rounded-2xl border border-white/20 text-white flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <Clock size={16} className="shrink-0 text-white/90 animate-spin" />
+                                                <div className="text-left truncate">
+                                                    <p className="text-[9px] font-black uppercase tracking-wider text-white/80">Saque em Análise</p>
+                                                    <p className="text-xs font-bold text-white truncate">
+                                                        R$ {Number(pendingW.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsHistoryModalOpen(true)}
+                                                className="shrink-0 px-2.5 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-[9px] font-black uppercase tracking-wider text-white transition-colors"
+                                            >
+                                                Ver
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={handleRequestWithdrawal}
+                                        disabled={Number(stats.availableNet) <= 0 || requestingWithdrawal || !!pendingW}
+                                        className="mt-6 px-6 py-3 w-full bg-white text-brand rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-brand-pale active:scale-95 transition-all outline-none focus:ring-4 focus:ring-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    >
+                                        {requestingWithdrawal ? 'Processando...' : pendingW ? 'Saque em Processamento' : 'Solicitar Resgate via Pix'}
+                                    </button>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>
@@ -813,7 +856,16 @@ export default function GiftManagementTab({ eventId }: Props) {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="font-black text-sm text-text-primary tracking-tight truncate">{gift.name}</h4>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-brand mt-1 drop-shadow-sm">R$ {Number(gift.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-brand drop-shadow-sm">
+                                                    R$ {Number(gift.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </p>
+                                                {gift.quantity && Number(gift.quantity) > 1 && (
+                                                    <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[9px] font-black uppercase tracking-wider">
+                                                        {gift.quantity} {gift.is_quota ? 'cotas' : 'unidades'}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={() => handleOpenEditGift(gift)} className="w-9 h-9 rounded-xl bg-surface border border-border-soft shadow-sm flex items-center justify-center text-text-muted hover:text-brand hover:border-brand/30 hover:bg-brand-pale transition-all"><Edit2 size={14} /></button>

@@ -50,7 +50,7 @@ export async function GET(
         // Busca os presentes ativos (independente de gift_list_enabled para não bloquear o dev)
         const { data: gifts, error } = await supabaseAdmin
             .from('gifts')
-            .select('id, name, description, price, image_url, active, "order", category, subcategory')
+            .select('id, name, description, price, image_url, active, "order", category, subcategory, quantity, is_quota')
             .eq('event_id', event.id)
             .eq('active', true)
             .order('order', { ascending: true });

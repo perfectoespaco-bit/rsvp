@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { decrypt } from './auth-utils'
 
 /**
@@ -44,7 +44,7 @@ export async function verifyEventOwnership(
         }
     }
 
-    const { data: event, error } = await supabase
+    const { data: event, error } = await supabaseAdmin
         .from('events')
         .select('created_by')
         .eq('id', eventId)

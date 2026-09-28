@@ -1,9 +1,18 @@
 @echo off
-:: Muda o diretório para onde este arquivo está salvo
+title Servidor Local - RSVP
 cd /d "%~dp0"
 
-:: Executa o comando
-npm run dev
+echo ========================================
+echo   Iniciando Servidor Next.js (Local)...
+echo ========================================
+echo.
 
-:: Impede que a janela feche se houver erro (opcional)
+call npm.cmd run dev
+
+if %errorlevel% neq 0 (
+    echo.
+    echo [ERRO] Ocorreu um problema ao iniciar o servidor.
+    pause
+)
+
 cmd /k

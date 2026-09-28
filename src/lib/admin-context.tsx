@@ -179,11 +179,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   async function removeEvent(id: string) {
     try {
-      const { error } = await supabase.from('events').delete().eq('id', id)
-      if (error) throw error
+      const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao remover evento')
       setEvents(prev => prev.filter(e => e.id !== id))
     } catch (error) {
       console.error('Erro ao remover evento:', error)
+      toast.error('Erro ao remover evento')
     }
   }
 

@@ -21,6 +21,17 @@ function AdminWithdrawalsContent() {
 
     useEffect(() => {
         fetchWithdrawals()
+
+        const channel = supabase
+            .channel('admin-withdrawals-changes')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'withdrawals' }, () => {
+                fetchWithdrawals()
+            })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     async function fetchWithdrawals() {

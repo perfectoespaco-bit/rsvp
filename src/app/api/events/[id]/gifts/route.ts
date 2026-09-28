@@ -43,7 +43,7 @@ export async function GET(
                 .from('withdrawals')
                 .select(`
                     id, amount, status, requested_at, pix_key, receipt_url, rejection_reason,
-                    gift_transactions (id, guest_name, amount_bruto, amount_net, amount)
+                    gift_transactions (id, guest_name, amount_bruto, amount_net)
                 `)
                 .eq('event_id', eventId),
             supabaseAdmin
@@ -59,7 +59,7 @@ export async function GET(
 
         const now = new Date();
         const stats = (transactions || []).reduce((acc: any, t: any) => {
-            const net = Number(t.amount_net);
+            const net = Number(t.amount_net || 0);
             acc.totalNet += net;
             if (t.release_date && new Date(t.release_date) > now) {
                 acc.pendingNet += net;
@@ -70,9 +70,15 @@ export async function GET(
         }, { totalNet: 0, pendingNet: 0, availableNet: 0 });
 
         const totalWithdrawn = (withdrawals || [])
-            .filter((w: any) => (w.status || 'pending').toUpperCase() === 'COMPLETED' || (w.status || 'pending').toUpperCase() === 'PENDING')
-            .reduce((acc: any, w: any) => acc + Number(w.amount), 0);
-        stats.availableNet -= totalWithdrawn;
+            .filter((w: any) => {
+                const st = (w.status || 'pending').toUpperCase();
+                return st === 'COMPLETED' || st === 'PENDING';
+            })
+            .reduce((acc: any, w: any) => acc + Number(w.amount || 0), 0);
+
+        stats.availableNet = Math.max(0, Math.round((stats.availableNet - totalWithdrawn) * 100) / 100);
+        stats.totalNet = Math.round(stats.totalNet * 100) / 100;
+        stats.pendingNet = Math.round(stats.pendingNet * 100) / 100;
 
         // Combinar transações de presentes com recados do RSVP
         // Só inclui presentes que possuam mensagem real (não excluídas do mural)
@@ -140,7 +146,7 @@ export async function GET(
             }))
         }, {
             headers: {
-                'Cache-Control': 'private, max-age=60' // Cache de 1 minuto para o admin
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
             }
         });
 
@@ -169,18 +175,19 @@ export async function POST(
             
         const nextOrder = existingGifts?.length ? (existingGifts[0].order || 0) + 1 : 1;
 
+        const qty = Math.max(1, parseInt(body.quantity, 10) || 1);
         const { data, error } = await supabaseAdmin
             .from('gifts')
             .insert({
                 event_id: eventId,
-                name: body.name,
-                description: body.description || '',
-                price: body.price,
+                name: String(body.name || '').trim(),
+                description: String(body.description || '').trim(),
+                price: Math.max(0, Number(body.price) || 0),
                 image_url: body.imageUrl,
                 category: body.category,
                 subcategory: 'custom',
-                is_quota: body.isQuota || false,
-                quantity: body.quantity || 1,
+                is_quota: Boolean(body.isQuota !== undefined ? body.isQuota : qty > 1),
+                quantity: qty,
                 active: body.active !== undefined ? body.active : true,
                 order: nextOrder,
                 is_custom: true

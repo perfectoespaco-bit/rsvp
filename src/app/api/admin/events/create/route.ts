@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-// Cliente Admin para ignorar RLS na criação
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { verifyAuth } from '@/lib/auth-utils'
 
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 Blindagem: Apenas administradores autenticados podem criar eventos nesta rota
+    const isAuth = await verifyAuth(request, true)
+    if (!isAuth) {
+      return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 401 })
+    }
+
     const { event } = await request.json()
 
     if (!event || !event.slug || !event.createdBy) {
