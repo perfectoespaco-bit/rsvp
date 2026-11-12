@@ -658,27 +658,33 @@ export function EventProvider({ children }: { children: ReactNode }) {
 
         try {
             const now = new Date()
-            const { error } = await supabase.from('guests').insert({
-                event_id: eventId,
-                name: rsvpData.name,
-                email: rsvpData.email,
-                telefone: rsvpData.telefone,
-                grupo: rsvpData.grupo,
-                status: 'confirmed',
-                category: rsvpData.category,
-                companions: rsvpData.companions,
-                companions_list: rsvpData.companionsList,
-                message: rsvpData.message || null,
-                updated_at: now.toISOString(),
-                confirmed_at: now.toISOString()
+            const res = await fetch('/api/guests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    eventId,
+                    guest: {
+                        name: rsvpData.name,
+                        email: rsvpData.email,
+                        telefone: rsvpData.telefone,
+                        grupo: rsvpData.grupo,
+                        status: 'confirmed',
+                        category: rsvpData.category,
+                        companions_list: rsvpData.companionsList || [],
+                        message: rsvpData.message || null
+                    }
+                })
             })
 
-            if (error) throw error
+            if (!res.ok) {
+                const errData = await res.json()
+                throw new Error(errData.error || 'Erro ao submeter RSVP')
+            }
 
             // Opcional: Atualizar lista local se o admin estiver vendo
             const newGuest: Guest = {
                 ...rsvpData,
-                id: Math.random().toString(36).substr(2, 9), // ID temporário até refresh
+                id: Math.random().toString(36).substr(2, 9),
                 updatedAt: now,
                 confirmedAt: now
             }

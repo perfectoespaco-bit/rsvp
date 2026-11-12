@@ -241,15 +241,27 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   async function addUser(user: AdminUser & { password_hash?: string }) {
     try {
-      const { error } = await supabase.from('admin_users').insert({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        type: user.type,
-        password_hash: user.password_hash || null,
-        created_at: user.createdAt.toISOString()
+      // 🔥 Chamada via API do Servidor (Service Role) para contornar RLS
+      const response = await fetch('/api/admin/users/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user: {
+            ...user,
+            createdAt: user.createdAt.toISOString()
+          }
+        }),
       })
-      if (error) throw error
+
+      if (!response.ok) {
+        const errData = await response.json()
+        const error: any = new Error(errData.details || errData.error || 'Erro ao criar usuário no servidor')
+        if (errData.code) error.code = errData.code
+        throw error
+      }
+
       setUsers(prev => [user, ...prev])
     } catch (error) {
       console.error('Erro ao adicionar usuário CRÍTICO:', error)
@@ -295,17 +307,24 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   async function updateUser(id: string, userData: Partial<AdminUser>) {
     try {
-      const updates: any = {}
-      if (userData.name) updates.name = userData.name
-      if (userData.email) updates.email = userData.email
-      if (userData.type) updates.type = userData.type
+      // 🔥 Chamada via API do Servidor (Service Role) para contornar RLS
+      const response = await fetch('/api/admin/users/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, userData }),
+      })
 
-      const { error } = await supabase.from('admin_users').update(updates).eq('id', id)
-      if (error) throw error
+      if (!response.ok) {
+        const errData = await response.json()
+        throw new Error(errData.error || 'Erro ao atualizar usuário no servidor')
+      }
 
       setUsers(prev => prev.map(u => u.id === id ? { ...u, ...userData } : u))
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error)
+      toast.error('Erro ao atualizar usuário')
     }
   }
 
